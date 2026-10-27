@@ -337,6 +337,7 @@ class _MainExploreScreenState extends ConsumerState<MainExploreScreen> with Sing
                                 onTap: () {
                                   ref.read(zoomLevelProvider.notifier).state = 1.0;
                                   ref.read(isFrontViewProvider.notifier).state = true;
+                                  ref.read(selectedMuscleIdProvider.notifier).state = null;
                                 },
                               ),
                             ],

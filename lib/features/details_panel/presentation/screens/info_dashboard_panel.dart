@@ -22,7 +22,7 @@ class InfoDashboardPanel extends ConsumerWidget {
       bottom: 0,
       left: 0,
       right: 0,
-      height: isSelected ? 340 : 130, // Expands upwards when a muscle is active
+      height: isSelected ? 238 : 130, // Reduced by 30% from 340 when a muscle is active
       child: Container(
         clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
@@ -110,9 +110,6 @@ class InfoDashboardPanel extends ConsumerWidget {
                   children: [
                     _buildTabButton(context, ref, 'train', 'TRAIN', activeTab),
                     _buildTabButton(context, ref, 'anatomy', 'ANATOMY', activeTab),
-                    _buildTabButton(context, ref, 'mistakes', 'MISTAKES', activeTab),
-                    _buildTabButton(context, ref, 'stretch', 'STRETCH', activeTab),
-                    _buildTabButton(context, ref, 'nutrition', 'RECOVERY', activeTab),
                   ],
                 ),
               ),
@@ -120,7 +117,7 @@ class InfoDashboardPanel extends ConsumerWidget {
               // Tab contents
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                   children: [
                     ..._buildPanelContent(muscle, activeTab),
                   ],
@@ -179,29 +176,16 @@ class InfoDashboardPanel extends ConsumerWidget {
   }
 
   List<Widget> _buildPanelContent(Muscle muscle, String activeTab) {
-    if (activeTab == 'train') {
-      return muscle.exercises.map<Widget>((ex) {
-        return _buildCard(ex.type, ex.title, ex.desc, AppColors.neonOrange);
-      }).toList();
-    } else if (activeTab == 'anatomy') {
+    if (activeTab == 'anatomy') {
       return [
         _buildCard('Specifications', 'Biomechanical Structure', muscle.details, AppColors.neonCyan),
         _buildCard('Core Action', 'Kinematics Function', muscle.function, AppColors.neonCyan),
       ];
-    } else if (activeTab == 'mistakes') {
-      return muscle.mistakes.map<Widget>((mis) {
-        return _buildCard(mis.risk, mis.title, mis.desc, AppColors.neonRed);
-      }).toList();
-    } else if (activeTab == 'stretch') {
-      return muscle.stretches.map<Widget>((st) {
-        return _buildCard(st.type, st.title, st.desc, AppColors.neonCyan);
-      }).toList();
-    } else if (activeTab == 'nutrition') {
-      return muscle.nutrition.map<Widget>((nut) {
-        return _buildCard(nut.type, nut.title, nut.desc, AppColors.neonCyan);
-      }).toList();
     }
-    return [];
+    // Default to 'train' exercises
+    return muscle.exercises.map<Widget>((ex) {
+      return _buildCard(ex.type, ex.title, ex.desc, AppColors.neonOrange);
+    }).toList();
   }
 
   Widget _buildCard(String badge, String title, String desc, Color accentColor) {

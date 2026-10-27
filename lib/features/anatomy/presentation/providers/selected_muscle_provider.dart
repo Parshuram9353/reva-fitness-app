@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 enum ViewMode { twoD, threeD }
 
 // View Mode Provider (2D vs 3D)
-final viewModeProvider = StateProvider<ViewMode>((ref) => ViewMode.twoD);
+final viewModeProvider = StateProvider<ViewMode>((ref) => ViewMode.threeD);
 
 // Selected Muscle ID Provider (e.g., 'chest', 'quads')
 final selectedMuscleIdProvider = StateProvider<String?>((ref) => null);

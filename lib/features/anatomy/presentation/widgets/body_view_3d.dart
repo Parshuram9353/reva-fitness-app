@@ -3,7 +3,6 @@ import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:anatomy_fitness_app_mobile/core/theme/app_colors.dart';
 import 'package:anatomy_fitness_app_mobile/features/anatomy/presentation/providers/selected_muscle_provider.dart';
-import 'dart:convert';
 
 // Internal/lower-level packages of the 3D controller for full WebView/JS support
 import 'package:flutter_3d_controller/src/core/modules/model_viewer/model_viewer.dart';
@@ -25,7 +24,6 @@ class _BodyView3dState extends ConsumerState<BodyView3d> {
   bool _isLoaded = false;
   bool _showOverlay = true;
   String? _error;
-  List<String> _loadedMaterialNames = [];
 
   // Mappings are handled directly in JavaScript within the WebView
 
@@ -54,11 +52,6 @@ class _BodyView3dState extends ConsumerState<BodyView3d> {
         _webViewController?.evaluateJavascript(
           source: "if (window.highlightMuscle) window.highlightMuscle(${next == null ? 'null' : "'$next'"});"
         );
-        if (next == null) {
-          final zoom = ref.read(zoomLevelProvider);
-          final radius = 105.0 / zoom;
-          _controller.setCameraOrbit(0.0, 75.0, radius);
-        }
       }
     });
 
@@ -82,16 +75,21 @@ class _BodyView3dState extends ConsumerState<BodyView3d> {
           Positioned.fill(
             child: ModelViewer(
               id: 'muscle-model-viewer',
-              src: 'assets/models/ecorche_-_anatomy_study.glb',
+              src: 'assets/models/ecorche_animated_interactive.glb',
               backgroundColor: const Color(0xFF07080A),
               cameraControls: true,
               progressBarColor: Colors.transparent, // Hide default progress bar to use our own cyber overlay
               activeGestureInterceptor: false,
+              autoPlay: false,
+              cameraTarget: '0m 0.88m 0m',
+              cameraOrbit: '0deg 75deg 105%',
+              minCameraOrbit: 'auto auto 50%',
+              maxCameraOrbit: 'auto auto 150%',
+              interpolationDecay: 100,
               relatedJs: """
                 const viewer = document.getElementById("muscle-model-viewer");
                 let platformReady = false;
                 let modelLoaded = false;
-                let activeHighlights = [];
 
                 function logDebug(msg) {
                   if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
@@ -101,146 +99,158 @@ class _BodyView3dState extends ConsumerState<BodyView3d> {
                   }
                 }
 
-                function mapComToMuscleId(meshName, com) {
-                  const [x, y, z] = com;
-
-                  if (meshName === 'Object_9' || meshName === 'Object_11') return null;
-
-                  // Calves: lowest posterior/anterior
-                  if (y < -0.008) {
-                    return 'calves';
-                  }
-
-                  // Quads and Hamstrings (thighs)
-                  if (y < -0.003) {
-                    return z > -0.0008 ? 'quads' : 'hamstrings';
-                  }
-
-                  // Shoulders (deltoids, high up on the sides)
-                  if (Math.abs(x) > 0.0022 && y >= 0.0045) {
-                    return 'shoulders';
-                  }
-
-                  // Arms (biceps, triceps, forearms)
-                  if (Math.abs(x) > 0.0022) {
-                    if (y < 0.001) {
-                      return 'forearms';
-                    } else {
-                      return z > -0.0008 ? 'biceps' : 'triceps';
-                    }
-                  }
-
-                  // Neck / Traps / Head (highest center area)
-                  if (y >= 0.0045) {
-                    return z > -0.0008 ? 'neck' : 'back';
-                  }
-
-                  // Torso (Chest, Abs, Back, Glutes) - covering y from -0.003 to 0.006
-                  if (z > -0.0008) {
-                    // Anterior Torso: Chest or Abs
-                    return y > 0.002 ? 'chest' : 'abs';
-                  } else {
-                    // Posterior Torso: Glutes or Back
-                    return y < 0.0005 ? 'glutes' : 'back';
-                  }
+                function getThreeScene() {
+                  if (!viewer) return null;
+                  const sceneSymbol = Object.getOwnPropertySymbols(viewer).find(s => s.description === 'scene');
+                  return sceneSymbol ? viewer[sceneSymbol] : null;
                 }
 
-                function clearHighlights() {
-                  for (let hl of activeHighlights) {
-                    if (hl.parent) {
-                      hl.parent.remove(hl);
+                function cacheOriginalMaterials(threeScene) {
+                  if (!threeScene || !threeScene._model) return;
+                  threeScene._model.traverse(node => {
+                    if (node.isMesh && node.material) {
+                      const mat = node.material;
+                      if (!mat.userData.__orig) {
+                        mat.userData.__orig = {
+                          colorHex: mat.color ? mat.color.getHex() : 0xffffff,
+                          emissiveHex: mat.emissive ? mat.emissive.getHex() : 0x000000,
+                          emissiveIntensity: mat.emissiveIntensity !== undefined ? mat.emissiveIntensity : 0.0,
+                          opacity: mat.opacity !== undefined ? mat.opacity : 1.0,
+                          transparent: !!mat.transparent,
+                          vertexColors: !!mat.vertexColors,
+                          roughness: mat.roughness !== undefined ? mat.roughness : 0.5,
+                          metalness: mat.metalness !== undefined ? mat.metalness : 0.0
+                        };
+                      }
                     }
-                  }
-                  activeHighlights = [];
+                  });
                 }
+
+                const muscleMeshes = {
+                  'chest': ['Mesh_Chest_Pectorals'],
+                  'abs': ['Mesh_Abs_Abdominals'],
+                  'shoulders': ['Mesh_Deltoid_L', 'Mesh_Deltoid_R'],
+                  'biceps': ['Mesh_Triceps_L', 'Mesh_Triceps_R'],
+                  'triceps': ['Mesh_Triceps_L', 'Mesh_Triceps_R'],
+                  'back': ['Mesh_Upper_Back'],
+                  'glutes': ['Mesh_Lower_Back_Glutes'],
+                  'quads': ['Mesh_Quadriceps_L', 'Mesh_Quadriceps_R'],
+                  'hamstrings': ['Mesh_Hamstrings_L', 'Mesh_Hamstrings_R'],
+                  'calves': ['Mesh_Calves_L', 'Mesh_Calves_R', 'Mesh_Feet_L', 'Mesh_Feet_R'],
+                  'forearms': ['Mesh_Forearm_L', 'Mesh_Forearm_R'],
+                  'neck': ['Mesh_Head_Neck']
+                };
+
+                const muscleMaterials = {
+                  'Mat_Chest_Pectorals': 'chest',
+                  'Mat_Abs_Abdominals': 'abs',
+                  'Mat_Deltoid_L': 'shoulders',
+                  'Mat_Deltoid_R': 'shoulders',
+                  'Mat_Quadriceps_L': 'quads',
+                  'Mat_Quadriceps_R': 'quads',
+                  'Mat_Hamstrings_L': 'hamstrings',
+                  'Mat_Hamstrings_R': 'hamstrings',
+                  'Mat_Calves_L': 'calves',
+                  'Mat_Calves_R': 'calves',
+                  'Mat_Feet_L': 'calves',
+                  'Mat_Feet_R': 'calves',
+                  'Mat_Forearm_L': 'forearms',
+                  'Mat_Forearm_R': 'forearms',
+                  'Mat_Upper_Back': 'back',
+                  'Mat_Head_Neck': 'neck',
+                  'Mat_Lower_Back_Glutes': 'glutes',
+                  'Mat_Triceps_L': 'triceps',
+                  'Mat_Triceps_R': 'triceps'
+                };
 
                 window.highlightMuscle = (muscleId) => {
                   try {
                     logDebug("highlightMuscle called with: " + muscleId);
-                    clearHighlights();
-                    if (!muscleId) {
-                      viewer.removeAttribute('camera-target');
-                      viewer.removeAttribute('camera-orbit');
-                      return;
-                    }
+                    const threeScene = getThreeScene();
+                    logDebug("threeScene: " + (!!threeScene) + " hasModel: " + (threeScene && !!threeScene._model));
 
-                    const sceneSymbol = Object.getOwnPropertySymbols(viewer).find(s => s.description === 'scene');
-                    if (!sceneSymbol) return;
-                    const threeScene = viewer[sceneSymbol];
-                    if (!threeScene || !threeScene._model) return;
+                    // 1. Highlight via ModelViewer official Material API
+                    if (viewer && viewer.model && viewer.model.materials) {
+                      for (let mat of viewer.model.materials) {
+                        const mName = mat.name || '';
+                        const mappedMuscle = muscleMaterials[mName];
+                        const isMatch = muscleId && (mappedMuscle === muscleId || 
+                          (muscleId === 'biceps' && (mName === 'Mat_Triceps_L' || mName === 'Mat_Triceps_R')) ||
+                          (muscleId === 'back' && (mName === 'Mat_Upper_Back' || mName === 'Mat_Lower_Back_Glutes')));
 
-                    let sumX = 0, sumY = 0, sumZ = 0;
-                    let count = 0;
-
-                    threeScene._model.traverse(node => {
-                      if (node.isMesh && node.material && node.geometry) {
-                        if (node.name === "Object_9" || node.name === "Object_11") return; // Skip skeleton/hands/feet
-                        
-                        const geom = node.geometry;
-                        const posAttr = geom.attributes.position;
-                        const indexAttr = geom.index;
-                        if (!posAttr || !indexAttr) return;
-
-                        const numFaces = indexAttr.count / 3;
-                        const highlightIndices = [];
-
-                        // Temporary vector for coordinate conversion
-                        const localV = new node.position.constructor();
-
-                        for (let f = 0; f < numFaces; f++) {
-                          const idx0 = indexAttr.getX(f * 3);
-                          const idx1 = indexAttr.getX(f * 3 + 1);
-                          const idx2 = indexAttr.getX(f * 3 + 2);
-
-                          const x0 = posAttr.getX(idx0), y0 = posAttr.getY(idx0), z0 = posAttr.getZ(idx0);
-                          const x1 = posAttr.getX(idx1), y1 = posAttr.getY(idx1), z1 = posAttr.getZ(idx1);
-                          const x2 = posAttr.getX(idx2), y2 = posAttr.getY(idx2), z2 = posAttr.getZ(idx2);
-
-                          // Compute face center in local coordinates
-                          localV.set((x0 + x1 + x2) / 3, (y0 + y1 + y2) / 3, (z0 + z1 + z2) / 3);
-                          
-                          // Convert to world coordinates
-                          node.localToWorld(localV);
-                          // Convert back to model's root coordinate space
-                          threeScene._model.worldToLocal(localV);
-
-                          // Check if this face's center maps to the target muscleId
-                          const mappedId = mapComToMuscleId(node.name, [localV.x, localV.y, localV.z]);
-                          if (mappedId === muscleId) {
-                            highlightIndices.push(idx0, idx1, idx2);
-                            sumX += localV.x;
-                            sumY += localV.y;
-                            sumZ += localV.z;
-                            count++;
-                          }
+                        if (!mat._origBaseColor) {
+                          mat._origBaseColor = [...mat.pbrMetallicRoughness.baseColorFactor];
                         }
 
-                        // Highlight mesh rendering removed as per user preference
+                        if (!muscleId) {
+                          // Restore
+                          mat.pbrMetallicRoughness.setBaseColorFactor(mat._origBaseColor);
+                          if (mat.setEmissiveFactor) mat.setEmissiveFactor([0, 0, 0]);
+                        } else if (isMatch) {
+                          // Vibrant Electric Neon Cyan [0, 0.9, 1.0, 1.0]
+                          mat.pbrMetallicRoughness.setBaseColorFactor([0.0, 0.9, 1.0, 1.0]);
+                          if (mat.setEmissiveFactor) mat.setEmissiveFactor([0.0, 0.9, 1.0]);
+                        } else {
+                          // Dimmed cyber dark silhouette [0.15, 0.17, 0.22, 0.5]
+                          const isSkel = mName === 'material_1' || mName === 'material_2';
+                          mat.pbrMetallicRoughness.setBaseColorFactor(isSkel ? [0.1, 0.1, 0.12, 0.2] : [0.18, 0.20, 0.25, 0.4]);
+                          if (mat.setEmissiveFactor) mat.setEmissiveFactor([0, 0, 0]);
+                        }
                       }
-                    });
-
-                    if (count > 0) {
-                      const avgX = sumX / count;
-                      const avgY = sumY / count;
-                      const avgZ = sumZ / count;
-                      
-                      let targetY = avgY;
-                      if (muscleId === 'neck') {
-                        targetY = avgY - 0.0032;
-                      }
-                      
-                      logDebug("Setting camera target to COM: " + avgX + ", " + targetY + ", " + avgZ);
-                      
-                      viewer.setAttribute('camera-target', avgX + 'm ' + targetY + 'm ' + avgZ + 'm');
-                      
-                      const theta = avgZ > -0.0008 ? '0deg' : '180deg';
-                      const phi = '75deg';
-                      const radius = '75%';
-                      viewer.setAttribute('camera-orbit', theta + ' ' + phi + ' ' + radius);
-                    } else {
-                      viewer.removeAttribute('camera-target');
-                      viewer.removeAttribute('camera-orbit');
                     }
+
+                    // 2. Also Highlight via Three.js Scene directly
+                    if (threeScene && threeScene._model) {
+                      cacheOriginalMaterials(threeScene);
+
+                      threeScene._model.traverse(node => {
+                        if (node.isMesh && node.material) {
+                          const mat = node.material;
+                          const mName = mat.name || '';
+                          const nName = node.name || '';
+                          const mappedMuscle = muscleMaterials[mName] || (muscleMeshes[muscleId] && muscleMeshes[muscleId].includes(nName) ? muscleId : null);
+                          const isTarget = muscleId && (mappedMuscle === muscleId ||
+                            (muscleId === 'biceps' && (mName === 'Mat_Triceps_L' || mName === 'Mat_Triceps_R')) ||
+                            (muscleId === 'back' && (mName === 'Mat_Upper_Back' || mName === 'Mat_Lower_Back_Glutes')));
+
+                          if (mat.userData && mat.userData.__orig) {
+                            const orig = mat.userData.__orig;
+                            if (!muscleId) {
+                              mat.color.setHex(orig.colorHex);
+                              mat.emissive.setHex(orig.emissiveHex);
+                              mat.emissiveIntensity = orig.emissiveIntensity;
+                              mat.opacity = orig.opacity;
+                              mat.transparent = orig.transparent;
+                              mat.vertexColors = orig.vertexColors;
+                              mat.needsUpdate = true;
+                            } else if (isTarget) {
+                              mat.color.setHex(0x00E5FF);
+                              mat.emissive.setHex(0x00E5FF);
+                              mat.emissiveIntensity = 2.0;
+                              mat.opacity = 1.0;
+                              mat.transparent = false;
+                              mat.vertexColors = false;
+                              mat.needsUpdate = true;
+                            } else {
+                              const isSkeleton = nName === 'Mesh_Skeleton_Inner' || nName === 'Mesh_Tendons_Ligaments' || mName === 'material_1' || mName === 'material_2';
+                              mat.color.setHex(isSkeleton ? 0x1A1D24 : 0x2A2E38);
+                              mat.emissive.setHex(0x000000);
+                              mat.emissiveIntensity = 0.0;
+                              mat.opacity = isSkeleton ? 0.25 : 0.4;
+                              mat.transparent = true;
+                              mat.vertexColors = false;
+                              mat.needsUpdate = true;
+                            }
+                          }
+                        }
+                      });
+                    }
+
+                    // Keep model completely static without playing animations
+                    try {
+                      viewer.pause();
+                      viewer.currentTime = 0;
+                    } catch (animErr) {}
                   } catch (e) {
                     logDebug("Error in highlightMuscle: " + e);
                   }
@@ -249,13 +259,20 @@ class _BodyView3dState extends ConsumerState<BodyView3d> {
                 viewer.addEventListener('load', (event) => {
                   logDebug("viewer load event fired");
                   modelLoaded = true;
+                  const threeScene = getThreeScene();
+                  if (threeScene) {
+                    cacheOriginalMaterials(threeScene);
+                  }
 
-                  // Initial highlight if selection exists
+                  try {
+                    viewer.pause();
+                    viewer.currentTime = 0;
+                  } catch (err) {}
+
                   if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
                     window.flutter_inappwebview.callHandler('onModelReady');
                   }
 
-                  // Forward load event to package onLoadChannel
                   if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
                     const srcVal = (event && event.target && event.target.src) ? event.target.src : '/model';
                     window.flutter_inappwebview.callHandler('onLoadChannel', srcVal);
@@ -301,29 +318,77 @@ class _BodyView3dState extends ConsumerState<BodyView3d> {
                     const dy = event.clientY - startY;
                     const dt = Date.now() - startTime;
 
-                    // If they dragged or held down too long, it's not a tap
-                    if (Math.sqrt(dx*dx + dy*dy) > 10 || dt > 300) {
+                    if (Math.sqrt(dx * dx + dy * dy) > 12 || dt > 400) {
                       return;
                     }
 
-                    // Get world position of the click
-                    const hit = viewer.positionAndNormalFromPoint(event.clientX, event.clientY);
-                    if (!hit) {
-                      logDebug("Clicked on background.");
-                      if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-                        window.flutter_inappwebview.callHandler('onMuscleClicked', null);
+                    let detectedMuscle = null;
+                    let hitPosition = null;
+
+                    if (typeof viewer.positionAndNormalFromPoint === 'function') {
+                      const hit = viewer.positionAndNormalFromPoint(event.clientX, event.clientY);
+                      if (hit && hit.position) {
+                        hitPosition = hit.position;
                       }
-                      return;
                     }
 
-                    const P = hit.position;
-                    logDebug("Hit position: " + JSON.stringify(P));
-                    
-                    const muscleId = mapComToMuscleId(null, [P.x, P.y, P.z]);
-                    logDebug("Clicked COM: " + JSON.stringify([P.x, P.y, P.z]) + " -> mapped to: " + muscleId);
+                    let matName = null;
+                    if (typeof viewer.materialFromPoint === 'function') {
+                      const mat = viewer.materialFromPoint(event.clientX, event.clientY);
+                      if (mat && mat.name) {
+                        matName = mat.name;
+                      }
+                    }
+
+                    logDebug("Clicked! matName: " + matName + " pos: " + JSON.stringify(hitPosition));
+
+                    if (matName && muscleMaterials[matName]) {
+                      detectedMuscle = muscleMaterials[matName];
+                      if (matName === 'Mat_Lower_Back_Glutes') {
+                        if (hitPosition && hitPosition.y >= 0.95) {
+                          detectedMuscle = 'back';
+                        } else {
+                          detectedMuscle = 'glutes';
+                        }
+                      } else if (matName === 'Mat_Triceps_L' || matName === 'Mat_Triceps_R') {
+                        if (hitPosition && hitPosition.z >= -0.05) {
+                          detectedMuscle = 'biceps';
+                        } else {
+                          detectedMuscle = 'triceps';
+                        }
+                      }
+                    } else if (hitPosition) {
+                      const x = hitPosition.x;
+                      const y = hitPosition.y;
+                      const z = hitPosition.z;
+
+                      if (y < 0.45) {
+                        detectedMuscle = 'calves';
+                      } else if (y >= 0.45 && y < 0.85) {
+                        detectedMuscle = z > -0.03 ? 'quads' : 'hamstrings';
+                      } else if (Math.abs(x) > 0.18) {
+                        if (y >= 1.22) {
+                          detectedMuscle = 'shoulders';
+                        } else if (y < 0.95) {
+                          detectedMuscle = 'forearms';
+                        } else {
+                          detectedMuscle = z > -0.05 ? 'biceps' : 'triceps';
+                        }
+                      } else if (y >= 1.45) {
+                        detectedMuscle = 'neck';
+                      } else {
+                        if (z > -0.02) {
+                          detectedMuscle = y >= 1.12 ? 'chest' : 'abs';
+                        } else {
+                          detectedMuscle = y >= 1.05 ? 'back' : 'glutes';
+                        }
+                      }
+                    }
+
+                    logDebug("Mapped to muscle: " + detectedMuscle);
 
                     if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-                      window.flutter_inappwebview.callHandler('onMuscleClicked', muscleId);
+                      window.flutter_inappwebview.callHandler('onMuscleClicked', detectedMuscle);
                     }
                   } catch(e) {
                     logDebug("Error in click handler: " + e);

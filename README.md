@@ -6,11 +6,11 @@ A modern, high-performance Flutter application designed for real-time biomechani
 
 ## 📥 Download App
 
-[![Direct Download APK](https://img.shields.io/badge/Direct%20Download-RevaFitness%20v1.0.0%20APK-FF5E00?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Parshuram9353/reva-fitness-app/raw/master/release/RevaFitness-v1.0.0.apk)
+[![Direct Download APK](https://img.shields.io/badge/Direct%20Download-RevaFitness%20v3.0.0%20APK-FF5E00?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Parshuram9353/reva-fitness-app/raw/master/release/RevaFitness-v3.0.0.apk)
 
 Get the ready-to-install Android application directly from the repository:
-* 📲 **[Download RevaFitness-v1.0.0.apk](https://github.com/Parshuram9353/reva-fitness-app/raw/master/release/RevaFitness-v1.0.0.apk)** *(~63.1 MB, Android 5.0+)*
-* 📖 See [Release Guide](release/README.md) for step-by-step installation instructions.
+* 📲 **[Download RevaFitness-v3.0.0.apk (Latest v3.0)](https://github.com/Parshuram9353/reva-fitness-app/raw/master/release/RevaFitness-v3.0.0.apk)** *(~64.5 MB, Android 5.0+)*
+* 📂 **[View All Available Releases (v1.0, v2.0, v3.0)](release/README.md)** with changelog and direct links.
 
 ---
 

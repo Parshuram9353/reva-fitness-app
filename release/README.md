@@ -1,29 +1,51 @@
 # REVA.FITNESS - Release Downloads 📦
 
-Official ready-to-install Android Application Package (APK) for **REVA.FITNESS**.
+Official ready-to-install Android Application Package (APK) builds for **REVA.FITNESS**.
 
 ---
 
-### 📲 Latest Release
+## 📲 Available Versions
 
+### 🌟 Version 3.0.0 (Latest Release - Today)
+* **Direct Download**: [**Download RevaFitness-v3.0.0.apk**](https://github.com/Parshuram9353/reva-fitness-app/raw/master/release/RevaFitness-v3.0.0.apk)
+* **File Name**: `RevaFitness-v3.0.0.apk`
+* **Version**: `3.0.0` (Build `3`)
+* **Size**: ~64.5 MB
+* **What's New**:
+  - Full integration of the high-detail `ecorche_animated_interactive.glb` 3D anatomy model.
+  - Interactive body-part highlighting: clicking any muscle group illuminates it in neon cyan with surrounding parts dimmed.
+  - Static model mode: disabled unwanted muscle flex/movement animations on tap for clean inspection.
+  - Simplified detail drawer: removed Mistakes, Stretch, and Recovery tabs, focusing cleanly on **Train** and **Anatomy**.
+  - Reduced popup drawer size by 30% for a much larger 3D viewport.
+
+---
+
+### 🔹 Version 2.0.0 (Previous Update)
+* **Direct Download**: [**Download RevaFitness-v2.0.0.apk**](https://github.com/Parshuram9353/reva-fitness-app/raw/master/release/RevaFitness-v2.0.0.apk)
+* **File Name**: `RevaFitness-v2.0.0.apk`
+* **Version**: `2.0.0` (Build `2`)
+* **Size**: ~64.5 MB
+* **Overview**:
+  - Introduced the new animated 3D muscle mesh model with multi-tab drawer structure.
+
+---
+
+### 🔹 Version 1.0.0 (Initial Release)
 * **Direct Download**: [**Download RevaFitness-v1.0.0.apk**](https://github.com/Parshuram9353/reva-fitness-app/raw/master/release/RevaFitness-v1.0.0.apk)
 * **File Name**: `RevaFitness-v1.0.0.apk`
 * **Version**: `1.0.0` (Build `1`)
-* **Size**: ~63.1 MB (Universal architecture: arm64-v8a, armeabi-v7a, x86_64)
-* **Minimum Android Version**: Android 5.0 (API Level 21) or higher
-* **Target Android Version**: Android 14 (API Level 34)
+* **Size**: ~63.1 MB
+* **Overview**:
+  - Initial stable release with 2D holographic diagrams and legacy 3D anatomy study model.
 
 ---
 
-### 📥 How to Install on Your Android Device
+## 📥 How to Install on Your Android Device
 
 1. **Download the APK**:
-   * Tap [**Download RevaFitness-v1.0.0.apk**](https://github.com/Parshuram9353/reva-fitness-app/raw/master/release/RevaFitness-v1.0.0.apk).
-   * Confirm the download in your mobile browser. Ensure the download completes (~63.1 MB).
+   * Tap on any of the download links above (recommended: **[RevaFitness-v3.0.0.apk](https://github.com/Parshuram9353/reva-fitness-app/raw/master/release/RevaFitness-v3.0.0.apk)**).
 2. **Enable "Install Unknown Apps"**:
    * Open the downloaded file from your browser downloads or your phone's **Files** app.
-   * If Android prompts *"For your security, your phone is not allowed to install unknown apps from this source"*, tap **Settings** and turn on **Allow from this source**.
-3. **Install**:
-   * Tap **Install** and wait for Android to verify and install the package.
-4. **Open & Enjoy**:
-   * Tap **Open** to launch REVA.FITNESS and explore the 3D/2D anatomy models!
+   * If prompted, tap **Settings** and enable **Allow from this source**.
+3. **Install & Launch**:
+   * Tap **Install** and then **Open** to run REVA.FITNESS!

@@ -12,6 +12,7 @@ Official ready-to-install Android Application Package (APK) builds for **REVA.FI
 * **Version**: `3.0.0` (Build `3`)
 * **Size**: ~64.5 MB
 * **What's New**:
+  - **Ultra-Smooth 60 FPS Zoom**: Eliminated pinch-to-zoom lag and jitter via dedicated single-axis gesture mapping, zero interpolation latency, and GPU fillrate optimization.
   - Full integration of the high-detail `ecorche_animated_interactive.glb` 3D anatomy model.
   - Interactive body-part highlighting: clicking any muscle group illuminates it in neon cyan with surrounding parts dimmed.
   - Static model mode: disabled unwanted muscle flex/movement animations on tap for clean inspection.

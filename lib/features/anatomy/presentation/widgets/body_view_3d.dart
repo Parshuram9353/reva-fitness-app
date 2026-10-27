@@ -78,14 +78,36 @@ class _BodyView3dState extends ConsumerState<BodyView3d> {
               src: 'assets/models/ecorche_animated_interactive.glb',
               backgroundColor: const Color(0xFF07080A),
               cameraControls: true,
+              disablePan: true, // Disables two-finger panning so two fingers cleanly pinch-to-zoom without jitter
+              touchAction: TouchAction.none, // Bypasses Android WebView gesture interception for direct 60fps touch
               progressBarColor: Colors.transparent, // Hide default progress bar to use our own cyber overlay
               activeGestureInterceptor: false,
               autoPlay: false,
+              shadowIntensity: 0,
               cameraTarget: '0m 0.88m 0m',
               cameraOrbit: '0deg 75deg 105%',
               minCameraOrbit: 'auto auto 50%',
               maxCameraOrbit: 'auto auto 150%',
-              interpolationDecay: 100,
+              interpolationDecay: 0, // 0ms decay gives instant, zero-lag finger tracking
+              relatedCss: """
+                html, body {
+                  margin: 0;
+                  padding: 0;
+                  width: 100%;
+                  height: 100%;
+                  overflow: hidden;
+                  touch-action: none;
+                  -webkit-touch-callout: none;
+                  -webkit-user-select: none;
+                  user-select: none;
+                  overscroll-behavior: none;
+                }
+                model-viewer {
+                  width: 100%;
+                  height: 100%;
+                  touch-action: none;
+                }
+              """,
               relatedJs: """
                 const viewer = document.getElementById("muscle-model-viewer");
                 let platformReady = false;
@@ -262,6 +284,12 @@ class _BodyView3dState extends ConsumerState<BodyView3d> {
                   const threeScene = getThreeScene();
                   if (threeScene) {
                     cacheOriginalMaterials(threeScene);
+                    try {
+                      // Cap pixel ratio to 1.5 on high-DPI screens to prevent massive fillrate overload
+                      if (threeScene.renderer && typeof threeScene.renderer.setPixelRatio === 'function') {
+                        threeScene.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+                      }
+                    } catch(rErr) {}
                   }
 
                   try {
@@ -307,12 +335,14 @@ class _BodyView3dState extends ConsumerState<BodyView3d> {
                 let startTime = 0;
 
                 viewer.addEventListener('pointerdown', (event) => {
+                  if (event.isPrimary === false) return; // Ignore secondary touch points during pinch zoom
                   startX = event.clientX;
                   startY = event.clientY;
                   startTime = Date.now();
                 });
 
                 viewer.addEventListener('pointerup', (event) => {
+                  if (event.isPrimary === false) return; // Ignore pinch zoom release
                   try {
                     const dx = event.clientX - startX;
                     const dy = event.clientY - startY;

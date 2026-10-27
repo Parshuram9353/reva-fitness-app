@@ -88,7 +88,7 @@ class _BodyView3dState extends ConsumerState<BodyView3d> {
               cameraOrbit: '0deg 75deg 105%',
               minCameraOrbit: 'auto auto 50%',
               maxCameraOrbit: 'auto auto 150%',
-              interpolationDecay: 0, // 0ms decay gives instant, zero-lag finger tracking
+              interpolationDecay: 1, // 1ms decay (> 0 required by HTMLBuilder) gives instant, zero-lag finger tracking
               relatedCss: """
                 html, body {
                   margin: 0;
